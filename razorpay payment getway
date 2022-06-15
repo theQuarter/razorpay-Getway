@@ -1,0 +1,76 @@
+    Razorpay? _razorpay;
+  
+  
+  @override
+  void initState() {
+    super.initState();
+    _razorpay = Razorpay();
+    _razorpay?.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay?.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay?.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _razorpay?.clear();
+  }
+ 
+ 
+ 
+ void openCheckout(double amount, String orderId) async {
+    log(Get.find<SplashController>().splasher!.razorpay!);
+    var options = {
+      'key': Get.find<SplashController>().splasher!.razorpay!,
+      'amount': amount * 100,
+      'name': Get.find<SplashController>().splasher!.razorpay ?? 'YCT Books',
+      'order_id': orderId,
+      'description': 'Payment related for books',
+      'prefill': {
+        'contact': '${Get.find<AuthController>().profileData!.mobile}',
+        'email': '${Get.find<AuthController>().profileData!.email}'
+      },
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
+    log("$options");
+
+    try {
+      // log("$options");
+      _razorpay?.open(options);
+    } catch (e) {
+      debugPrint(e.toString());
+    }
+  }
+
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    log(response.toString());
+    Get.find<BooksOrderController>()
+        .fetchOrder(response.orderId!)
+        .then((value) {
+      if (value.isSuccess) {
+        Fluttertoast.showToast(msg: "Payment SUCCESS");
+        Navigator.pushAndRemoveUntil(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const OrderSuccessfull(),
+            ),
+            (route) => false);
+      } else {
+        Fluttertoast.showToast(msg: "Transaction feild");
+      }
+    });
+  }
+
+  void _handlePaymentError(PaymentFailureResponse response) {
+    log("${response.message}");
+
+    Fluttertoast.showToast(msg: "Transaction feild");
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    Fluttertoast.showToast(
+        msg: "EXTERNAL_WALLET: " + response.walletName.toString(),
+        timeInSecForIosWeb: 4);
+  }
